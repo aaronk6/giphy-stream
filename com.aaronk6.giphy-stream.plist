@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.aaronk6.giphy-stream</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/aaron/bin/giphy-stream</string>
+		<string>-o</string>
+		<string>/Volumes/tank/Media/Information Radiator/Giphy.mp4</string>
+		<string>-f</string>
+		<string>/usr/local/bin/ffmpeg</string>
+	</array>
+	<key>StartCalendarInterval</key>
+	<array>
+		<dict>
+			<key>Hour</key>
+			<integer>6</integer>
+		</dict>
+		<dict>
+			<key>Hour</key>
+			<integer>13</integer>
+		</dict>
+		<dict>
+			<key>Hour</key>
+			<integer>17</integer>
+		</dict>
+	</array>
+	<key>StandardOutPath</key>
+	<string>/Users/aaron/Library/Logs/com.aaronk6.giphy-stream.log</string>
+	<key>StandardErrorPath</key>
+	<string>/Users/aaron/Library/Logs/com.aaronk6.giphy-stream.err</string>
+</dict>
+</plist>
