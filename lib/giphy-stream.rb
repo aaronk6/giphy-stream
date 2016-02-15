@@ -14,6 +14,7 @@ class GiphyStream
   MAX_RESULTS = 100 # 100 is Giphy's maximum (per request)
   TARGET_VIDEO_WIDTH = 1280
   TARGET_VIDEO_HEIGHT = 720
+  SLEEP_AFTER_DELETE = 60
 
   def initialize(options)
 
@@ -128,6 +129,12 @@ class GiphyStream
         FileUtils.rm_f dest_tmp
         return nil
       end
+
+      puts "Removing existing file (if any)"
+      FileUtils.rm_f dest
+
+      puts "Waiting %i seconds" % SLEEP_AFTER_DELETE
+      sleep SLEEP_AFTER_DELETE
 
       FileUtils.mv(dest_tmp, dest)
       return dest
