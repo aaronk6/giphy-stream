@@ -118,6 +118,7 @@ class GiphyStream
 
       cmd = [ @ffmpeg_path, '-y',
         '-loglevel', 'error',
+        '-safe', '0',
         '-f', 'concat',
         '-i', list_path, dest_tmp,
         '-c', 'copy' ].shelljoin
