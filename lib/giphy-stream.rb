@@ -10,6 +10,7 @@ class GiphyStream
   DEFAULT_API_KEY = 'dc6zaTOxFJmzC' # Giphy test key
   DEFAULT_FILE_NAME = 'Giphy_%s.mp4' % Time.now.strftime('%Y%m%dT%H%M%S')
   DEFAULT_FFMPEG_PATH = 'ffmpeg'
+  TEMP_DIRECTORY_PREFIX = 'giphy-stream_'
   ENDPOINT = 'https://api.giphy.com/v1'
   MAX_RESULTS = 100 # 100 is Giphy's maximum (per request)
   TARGET_VIDEO_WIDTH = 1280
@@ -36,23 +37,31 @@ class GiphyStream
 
     # invoke process
     loop_urls = get_loop_urls
-    exit 1 unless create_stream(loop_urls)
+    exit 1 unless create_stream(loop_urls, options[:temp_dir])
 
     puts "Done."
   end
 
   private
 
-  def create_stream(urls)
+  def create_stream(urls, temp_dir=nil)
 
-    dir = Dir.mktmpdir
+    if temp_dir
+      dir = File.join(File.expand_path(temp_dir), TEMP_DIRECTORY_PREFIX + SecureRandom.hex)
+      Dir.mkdir(dir, 0700)
+    else
+      dir = Dir.mktmpdir
+    end
+
+    puts "Temporary directory is %s" % dir
+
     files = []
     scaled_files = []
 
     begin
       urls.each do |url|
         path = download_file(url, dir)
-        files.push(path)
+        files.push(path) if path
       end
 
       puts "Downloaded %i file(s)" % files.count
@@ -150,8 +159,13 @@ class GiphyStream
     puts "Downloading %s to %s" % [ url, path ]
 
     File.open(path, 'wb') do |f|
-      open(url, 'rb') do |data|
-        f.write(data.read)
+      begin
+        open(url, 'rb') do |data|
+          f.write(data.read)
+        end
+      rescue => e
+        puts "Failed to download file from %s, skipping (%s)" % [ url, e ]
+        return
       end
     end
 
@@ -166,8 +180,8 @@ class GiphyStream
 
     data.each do |item|
       begin
-        url = item["images"]["looping"]["mp4"]
-        urls.push(url) if url
+        url = item["images"]["looping"]["mp4"].strip
+        urls.push(url) if url.length > 0
       rescue
         next
       end

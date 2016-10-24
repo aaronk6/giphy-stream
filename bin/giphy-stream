@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 require 'optparse'
-require_relative 'lib/giphy-stream'
+require_relative '../lib/giphy-stream'
 
 trap('INT') do
   puts "\nkthxbye"
@@ -26,6 +26,10 @@ opt_parser = OptionParser.new do |opts|
 
   opts.on('-f', '--ffmpeg-path [FFMPEG_PATH]', 'Path to ffmpeg binary (optional, default: ffmpeg)') do |f|
     options[:ffmpeg_path] = f
+  end
+
+  opts.on('-t', '--temp-dir [TEMP_PATH]', 'Path to temp dir for storing intermediate files (optional, default: system temp dir)') do |f|
+    options[:temp_dir] = f
   end
 
   opts.on('-h', '--help', 'Show this help screen') do
