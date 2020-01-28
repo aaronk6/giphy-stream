@@ -1,7 +1,7 @@
 Gem::Specification.new do |s|
   s.name        = 'giphy-stream'
-  s.version     = '0.0.2'
-  s.date        = '2016-10-24'
+  s.version     = '0.1.0'
+  s.date        = '2020-01-28'
   s.summary     = "Creates an MP4 video from the Giphy Top 100"
   s.authors     = ["aaronk6"]
   s.email       = 'aaronk6@users.noreply.github.com'
