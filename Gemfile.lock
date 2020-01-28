@@ -1,0 +1,16 @@
+PATH
+  remote: .
+  specs:
+    giphy-stream (0.1.0)
+
+GEM
+  specs:
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  giphy-stream!
+
+BUNDLED WITH
+   1.17.2
