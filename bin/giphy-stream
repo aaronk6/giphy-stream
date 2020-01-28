@@ -28,8 +28,16 @@ opt_parser = OptionParser.new do |opts|
     options[:ffmpeg_path] = f
   end
 
+  opts.on('--cpulimit-path [CPULIMIT_PATH]', 'Path to cpulimit binary (optional, default: cpulimit)') do |f|
+    options[:cpulimit_path] = f
+  end
+
   opts.on('-l', '--ffmpeg-cpu-limit [FFMPEG_CPU_LIMIT]', 'Limit ffmpeg CPU usage (optional, default: 0 = unlimited)') do |l|
     options[:ffmpeg_cpu_limit] = l
+  end
+
+  opts.on('--ffmpeg-threads [FFMPEG_THREADS]', 'Limit ffmpeg threads (optional, default: 0 = unlimited)') do |l|
+    options[:ffmpeg_threads] = l
   end
 
   opts.on('-t', '--temp-dir [TEMP_PATH]', 'Path to temp dir for storing intermediate files (optional, default: system temp dir)') do |f|
