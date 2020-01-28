@@ -10,6 +10,7 @@ class GiphyStream
   DEFAULT_API_KEY = 'dc6zaTOxFJmzC' # Giphy test key
   DEFAULT_FILE_NAME = 'Giphy_%s.mp4' % Time.now.strftime('%Y%m%dT%H%M%S')
   DEFAULT_FFMPEG_PATH = 'ffmpeg'
+  DEFAULT_FFMPEG_CPU_LIMIT = 0 # unlimited
   TEMP_DIRECTORY_PREFIX = 'giphy-stream_'
   ENDPOINT = 'https://api.giphy.com/v1'
   MAX_RESULTS = 100 # 100 is Giphy's maximum (per request)
@@ -34,6 +35,7 @@ class GiphyStream
     end
 
     @ffmpeg_path = options[:ffmpeg_path] ? options[:ffmpeg_path] : DEFAULT_FFMPEG_PATH
+    @ffmpeg_cpu_limit = options[:ffmpeg_cpu_limit] ? options[:ffmpeg_cpu_limit].to_i : DEFAULT_FFMPEG_CPU_LIMIT
 
     # invoke process
     loop_urls = get_loop_urls
@@ -92,14 +94,14 @@ class GiphyStream
       "pad=#{w}:#{h}:(#{w}-iw*min(#{w}/iw\\,#{h}/ih))/2:(#{h}-ih*min(#{w}/iw\\,#{h}/ih))/2," +
       "setsar=1:1"
 
-    cmd = [ @ffmpeg_path, '-y',
+    cmd = apply_cpu_limit([ @ffmpeg_path, '-y',
       '-i', source,
       '-loglevel', 'error',
       '-preset', 'superfast',
       '-c:v', 'libx264',
       '-r', 25,
       '-filter:v', filter,
-      dest ].shelljoin
+      dest ], @ffmpeg_cpu_limit).shelljoin
 
     `#{cmd}`
 
@@ -125,12 +127,12 @@ class GiphyStream
       list_path = File.join(dir, 'list.txt')
       File.write(list_path, files.map{|s| 'file \'%s\'' % s.shellescape }.join("\n"))
 
-      cmd = [ @ffmpeg_path, '-y',
+      cmd = apply_cpu_limit([ @ffmpeg_path, '-y',
         '-loglevel', 'error',
         '-safe', '0',
         '-f', 'concat',
         '-i', list_path, dest_tmp,
-        '-c', 'copy' ].shelljoin
+        '-c', 'copy' ], @ffmpeg_cpu_limit).shelljoin
 
       `#{cmd}`
 
@@ -151,6 +153,13 @@ class GiphyStream
     ensure
       FileUtils.remove_entry dir
     end
+  end
+
+  def apply_cpu_limit(cmd, limit=0)
+    if limit > 0
+      return [ 'cpulimit', '-i', '-l', limit, '--' ] + cmd
+    end
+    return cmd
   end
 
   def download_file(url, dir)

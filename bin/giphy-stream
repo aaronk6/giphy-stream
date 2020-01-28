@@ -28,6 +28,10 @@ opt_parser = OptionParser.new do |opts|
     options[:ffmpeg_path] = f
   end
 
+  opts.on('-l', '--ffmpeg-cpu-limit [FFMPEG_CPU_LIMIT]', 'Limit ffmpeg CPU usage (optional, default: 0 = unlimited)') do |l|
+    options[:ffmpeg_cpu_limit] = l
+  end
+
   opts.on('-t', '--temp-dir [TEMP_PATH]', 'Path to temp dir for storing intermediate files (optional, default: system temp dir)') do |f|
     options[:temp_dir] = f
   end
