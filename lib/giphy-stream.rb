@@ -13,9 +13,10 @@ class GiphyStream
   DEFAULT_CPULIMIT_PATH = 'cpulimit'
   DEFAULT_FFMPEG_CPU_LIMIT = 0 # unlimited
   DEFAULT_FFMPEG_THREADS = 0 # unlimited
+  DEFAULT_VIDEO_COUNT = 100 # number of loops retrieve from Giphy
+  HLS_STREAM_NAME = 'giphy'
   TEMP_DIRECTORY_PREFIX = 'giphy-stream_'
   ENDPOINT = 'https://api.giphy.com/v1'
-  VIDEO_COUNT = 100 # number of loops retrieve from Giphy
   BATCH_SIZE = 100 # 100 is Giphy's maximum per request
   MAX_REQUESTS = 10 # maximum number of requests to perform before giving up
   MAX_RETRIES = 10
@@ -27,13 +28,13 @@ class GiphyStream
 
     @api_key = options[:api_key] ? options[:api_key] : DEFAULT_API_KEY
 
-    @output_file = options[:output_file] ? options[:output_file]
+    @output_path = options[:output_path] ? options[:output_path]
       : File.join(Dir.pwd, DEFAULT_FILE_NAME)
 
     if options[:count] and options[:count].between?(1, 1000)
       @count = options[:count]
     elsif options[:count].nil?
-      @count = VIDEO_COUNT
+      @count = DEFAULT_VIDEO_COUNT
     else
       $stderr.puts "Count must be between 1 and 100"
       exit 1
@@ -88,7 +89,7 @@ class GiphyStream
       end
 
       puts "Concatenating %i scaled video(s)" % scaled_files.count
-      return false unless concatenate_videos(scaled_files, @output_file)
+      return false unless concatenate_videos(scaled_files, @output_path)
       return true
     ensure
       FileUtils.remove_entry dir
@@ -129,8 +130,6 @@ class GiphyStream
   def concatenate_videos(files, dest)
 
     dir = Dir.mktmpdir
-    dest << 'mp4' unless dest.end_with? 'mp4'
-    dest_tmp = temp_video_name(dest)
 
     puts "Writing video to %s" % dest
 
@@ -144,27 +143,23 @@ class GiphyStream
         '-loglevel', 'error',
         '-safe', '0',
         '-f', 'concat',
-        '-i', list_path, dest_tmp,
+        '-i', list_path,
         '-c', 'copy',
-        '-threads', @ffmpeg_threads
+        '-f', 'hls',
+        '-hls_list_size', '0',
+        '-hls_segment_filename', '%s_%%05d.ts' % Time.now.to_i,
+        '-threads', @ffmpeg_threads,
+        HLS_STREAM_NAME + '.m3u8'
       ], @ffmpeg_cpu_limit).shelljoin
 
+      Dir.chdir dest
       `#{cmd}`
 
       if $?.to_i != 0
         $stderr.puts "Failed to concatenate videos"
-        FileUtils.rm_f dest_tmp
         return nil
       end
 
-      puts "Removing existing file (if any)"
-      FileUtils.rm_f dest
-
-      puts "Waiting %i seconds" % SLEEP_AFTER_DELETE
-      sleep SLEEP_AFTER_DELETE
-
-      FileUtils.mv(dest_tmp, dest)
-      return dest
     ensure
       FileUtils.remove_entry dir
     end
@@ -202,7 +197,7 @@ class GiphyStream
     urls = []
     request_counter = 0
 
-    while urls.length < VIDEO_COUNT and request_counter < MAX_REQUESTS
+    while urls.length < @count and request_counter < MAX_REQUESTS
 
       res = query_api('gifs/trending', request_counter * BATCH_SIZE)
       data = JSON.load(res)["data"]
@@ -214,7 +209,8 @@ class GiphyStream
         rescue
           next
         end
-      end  
+        break if urls.length >= @count
+      end
 
       # one dot per request
       print '.'

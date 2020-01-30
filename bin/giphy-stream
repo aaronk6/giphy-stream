@@ -12,11 +12,11 @@ options = {}
 opt_parser = OptionParser.new do |opts|
   opts.banner = "Usage: giphy-stream [options]"
 
-  opts.on('-o', '--output-file [OUTPUT_FILE]', 'Output file path (optional)') do |o|
-    options[:output_file] = o
+  opts.on('-o', '--output-path [OUTPUT_PATH]', 'Output path (optional)') do |o|
+    options[:output_path] = o
   end
 
-  opts.on('-c', '--count [COUNT]', 'Amount of videos to fetch (1-100, default: 100)') do |c|
+  opts.on('-c', '--count [COUNT]', 'Amount of videos to fetch (1-1000, default: 100)') do |c|
     options[:count] = c.to_i
   end
 
