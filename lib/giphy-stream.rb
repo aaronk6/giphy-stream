@@ -15,7 +15,9 @@ class GiphyStream
   DEFAULT_FFMPEG_THREADS = 0 # unlimited
   TEMP_DIRECTORY_PREFIX = 'giphy-stream_'
   ENDPOINT = 'https://api.giphy.com/v1'
-  MAX_RESULTS = 100 # 100 is Giphy's maximum (per request)
+  VIDEO_COUNT = 100 # number of loops retrieve from Giphy
+  BATCH_SIZE = 100 # 100 is Giphy's maximum per request
+  MAX_REQUESTS = 10 # maximum number of requests to perform before giving up
   TARGET_VIDEO_WIDTH = 1280
   TARGET_VIDEO_HEIGHT = 720
   SLEEP_AFTER_DELETE = 60
@@ -27,10 +29,10 @@ class GiphyStream
     @output_file = options[:output_file] ? options[:output_file]
       : File.join(Dir.pwd, DEFAULT_FILE_NAME)
 
-    if options[:count] and options[:count].between?(1, 100)
+    if options[:count] and options[:count].between?(1, 1000)
       @count = options[:count]
     elsif options[:count].nil?
-      @count = MAX_RESULTS
+      @count = VIDEO_COUNT
     else
       $stderr.puts "Count must be between 1 and 100"
       exit 1
@@ -68,6 +70,11 @@ class GiphyStream
       urls.each do |url|
         path = download_file(url, dir)
         files.push(path) if path
+      end
+
+      if files.count == 0
+        $stderr.puts "No videos downloaded"
+        return false
       end
 
       puts "Downloaded %i file(s)" % files.count
@@ -189,21 +196,34 @@ class GiphyStream
   end
 
   def get_loop_urls
+    puts "Getting loop URLs"
 
-    res = query_api 'gifs/trending'
-    data = JSON.load(res)["data"]
     urls = []
+    request_counter = 0
 
-    data.each do |item|
-      begin
-        url = item["images"]["looping"]["mp4"].strip
-        urls.push(url) if url.length > 0
-      rescue
-        next
-      end
+    while urls.length < VIDEO_COUNT and request_counter < MAX_REQUESTS
+
+      res = query_api('gifs/trending', request_counter * BATCH_SIZE)
+      data = JSON.load(res)["data"]
+
+      data.each do |item|
+        begin
+          url = item["images"]["looping"]["mp4"].strip
+          urls.push(url) if url.length > 0
+        rescue
+          next
+        end
+      end  
+
+      # one dot per request
+      print '.'
+      STDOUT.flush
+
+      request_counter += 1
     end
+    puts # print new line
 
-    puts "Found %i loop(s)" % urls.count
+    puts "Retrieved %i loop URL(s) in %i requests" % [ urls.count, request_counter ]
     urls
   end
 
@@ -211,11 +231,12 @@ class GiphyStream
     File.join(File.dirname(path), '.tmp_%s' % File.basename(path))
   end
 
-  def query_api(route, limit=MAX_RESULTS)
+  def query_api(route, offset=0, limit=BATCH_SIZE)
     uri = URI.parse("%s/%s" % [ ENDPOINT, route ])
     uri.query = URI.encode_www_form({
       api_key: @api_key,
-      limit: @count
+      offset: offset,
+      limit: limit,
     })
     open(uri).read
   end
