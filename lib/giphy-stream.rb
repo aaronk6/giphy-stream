@@ -18,6 +18,7 @@ class GiphyStream
   VIDEO_COUNT = 100 # number of loops retrieve from Giphy
   BATCH_SIZE = 100 # 100 is Giphy's maximum per request
   MAX_REQUESTS = 10 # maximum number of requests to perform before giving up
+  MAX_RETRIES = 10
   TARGET_VIDEO_WIDTH = 1280
   TARGET_VIDEO_HEIGHT = 720
   SLEEP_AFTER_DELETE = 60
@@ -233,11 +234,25 @@ class GiphyStream
 
   def query_api(route, offset=0, limit=BATCH_SIZE)
     uri = URI.parse("%s/%s" % [ ENDPOINT, route ])
+    
     uri.query = URI.encode_www_form({
       api_key: @api_key,
       offset: offset,
       limit: limit,
     })
-    open(uri).read
+
+    retries = 0
+    begin
+      return open(uri).read
+    rescue
+      if (retries += 1) <= MAX_RETRIES
+        puts "Failed to connect to Giphy API(#{e}), retrying in #{retries} second(s)..."
+        sleep(retries)
+        retry
+      else
+        raise
+      end
+    end
+
   end
 end
