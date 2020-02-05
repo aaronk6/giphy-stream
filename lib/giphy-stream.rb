@@ -19,7 +19,7 @@ class GiphyStream
   ENDPOINT = 'https://api.giphy.com/v1'
   BATCH_SIZE = 100 # 100 is Giphy's maximum per request
   MAX_REQUESTS = 10 # maximum number of requests to perform before giving up
-  MAX_RETRIES = 10
+  MAX_RETRIES = 100
   TARGET_VIDEO_WIDTH = 1280
   TARGET_VIDEO_HEIGHT = 720
   SLEEP_AFTER_DELETE = 60
