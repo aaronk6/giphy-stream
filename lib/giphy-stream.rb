@@ -9,7 +9,7 @@ require 'logger'
 class GiphyStream
 
   DEFAULT_API_KEY = 'dc6zaTOxFJmzC' # Giphy test key
-  DEFAULT_FILE_NAME = 'Giphy_%s.mp4' % Time.now.strftime('%Y%m%dT%H%M%S')
+  DEFAULT_OUTPUT_DIR = 'output'
   DEFAULT_FFMPEG_PATH = 'ffmpeg'
   DEFAULT_CPULIMIT_PATH = 'cpulimit'
   DEFAULT_FFMPEG_CPU_LIMIT = 0 # unlimited
@@ -41,7 +41,7 @@ class GiphyStream
     end
 
     @output_path = options[:output_path] ? File.expand_path(options[:output_path])
-      : File.join(Dir.pwd, DEFAULT_FILE_NAME)
+      : File.join(Dir.pwd, DEFAULT_OUTPUT_DIR)
 
     if options[:count] and options[:count].between?(1, 1000)
       @count = options[:count]
