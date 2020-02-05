@@ -30,7 +30,9 @@ class GiphyStream
     @api_key = options[:api_key] ? options[:api_key] : DEFAULT_API_KEY
 
     if options[:log_file]
-      @logger = Logger.new(File.open(options[:log_file], 'a'), 'weekly')
+      log_file = File.open(options[:log_file], 'a')
+      log_file.sync = true
+      @logger = Logger.new(log_file, 'weekly')
     else
       @logger = Logger.new(STDOUT)
       @logger.formatter = proc do |severity, datetime, progname, msg|
