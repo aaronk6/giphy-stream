@@ -157,12 +157,14 @@ class GiphyStream
 
       if $?.to_i != 0
         $stderr.puts "Failed to concatenate videos"
-        return nil
+        return false
       end
 
     ensure
       FileUtils.remove_entry dir
     end
+
+    return true
   end
 
   def apply_cpu_limit(cmd, limit=0)
