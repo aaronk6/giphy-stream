@@ -14,7 +14,7 @@ class GiphyStream
   DEFAULT_FFMPEG_CPU_LIMIT = 0 # unlimited
   DEFAULT_FFMPEG_THREADS = 0 # unlimited
   DEFAULT_VIDEO_COUNT = 100 # number of loops retrieve from Giphy
-  HLS_STREAM_NAME = 'giphy'
+  HLS_STREAM_NAME = 'giphy.m3u8'
   TEMP_DIRECTORY_PREFIX = 'giphy-stream_'
   ENDPOINT = 'https://api.giphy.com/v1'
   BATCH_SIZE = 100 # 100 is Giphy's maximum per request
@@ -28,7 +28,7 @@ class GiphyStream
 
     @api_key = options[:api_key] ? options[:api_key] : DEFAULT_API_KEY
 
-    @output_path = options[:output_path] ? options[:output_path]
+    @output_path = options[:output_path] ? File.expand_path(options[:output_path])
       : File.join(Dir.pwd, DEFAULT_FILE_NAME)
 
     if options[:count] and options[:count].between?(1, 1000)
@@ -67,6 +67,7 @@ class GiphyStream
 
     files = []
     scaled_files = []
+    stream_path = File.join Time.now.strftime("%Y-%m-%d_%H-%M-%S"), HLS_STREAM_NAME
 
     begin
       urls.each do |url|
@@ -89,7 +90,11 @@ class GiphyStream
       end
 
       puts "Concatenating %i scaled video(s)" % scaled_files.count
-      return false unless concatenate_videos(scaled_files, @output_path)
+      return false unless concatenate_videos(scaled_files, @output_path, stream_path)
+
+      puts "Writing .htaccess"
+      return false unless write_htaccess(@output_path, stream_path)
+
       return true
     ensure
       FileUtils.remove_entry dir
@@ -127,17 +132,20 @@ class GiphyStream
     dest
   end
 
-  def concatenate_videos(files, dest)
+  def concatenate_videos(files, dest, stream_path)
 
     dir = Dir.mktmpdir
 
-    puts "Writing video to %s" % dest
+    base_dir = File.join(dest, File.dirname(stream_path))
+    stream_name = File.basename(stream_path)
+
+    puts "Writing stream to %s" % File.join(dest, stream_path)
 
     begin
 
       # write temporary concat file for ffmpeg
       list_path = File.join(dir, 'list.txt')
-      File.write(list_path, files.map{|s| 'file \'%s\'' % s.shellescape }.join("\n"))
+      File.write(list_path, files.map{|s| 'file \'%s\'' % s.shellescape }.join("\n"))    
 
       cmd = apply_cpu_limit([ @ffmpeg_path, '-y',
         '-loglevel', 'error',
@@ -147,12 +155,13 @@ class GiphyStream
         '-c', 'copy',
         '-f', 'hls',
         '-hls_list_size', '0',
-        '-hls_segment_filename', '%s_%%05d.ts' % Time.now.to_i,
         '-threads', @ffmpeg_threads,
-        HLS_STREAM_NAME + '.m3u8'
+        File.basename(stream_path)
       ], @ffmpeg_cpu_limit).shelljoin
 
-      Dir.chdir dest
+      FileUtils.mkdir_p base_dir
+      Dir.chdir base_dir
+
       `#{cmd}`
 
       if $?.to_i != 0
@@ -165,6 +174,13 @@ class GiphyStream
     end
 
     return true
+  end
+
+  def write_htaccess(dest, stream_path)
+    dirname = File.basename(dest)
+    File.write(File.join(dest, '.htaccess'),
+      "RedirectMatch temp ^.*/#{dirname}/$ $1/#{dirname}/#{stream_path}\n" +
+      "RedirectMatch temp ^.*/#{dirname}/#{HLS_STREAM_NAME}$ $1/#{dirname}/#{stream_path}\n")
   end
 
   def apply_cpu_limit(cmd, limit=0)
