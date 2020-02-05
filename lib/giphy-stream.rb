@@ -260,7 +260,7 @@ class GiphyStream
       return open(uri).read
     rescue => e
       if (retries += 1) <= MAX_RETRIES
-        puts "Failed to connect to Giphy API(#{e}), retrying in #{retries} second(s)..."
+        puts "Failed to connect to Giphy API (#{e}), retrying in #{retries} second(s)..."
         sleep(retries)
         retry
       else
