@@ -68,6 +68,8 @@ class GiphyStream
 
   def create_stream(urls, temp_dir=nil)
 
+    stream_date = Time.now
+
     if temp_dir
       dir = File.join(File.expand_path(temp_dir), TEMP_DIRECTORY_PREFIX + SecureRandom.hex)
       Dir.mkdir(dir, 0700)
@@ -79,7 +81,7 @@ class GiphyStream
 
     files = []
     scaled_files = []
-    stream_path = File.join Time.now.strftime("%Y-%m-%d_%H-%M-%S"), HLS_STREAM_NAME
+    stream_path = File.join stream_date.strftime("%Y-%m-%d_%H-%M-%S"), HLS_STREAM_NAME
 
     begin
       urls.each do |url|
@@ -95,10 +97,17 @@ class GiphyStream
       @logger.info "Downloaded %i file(s)" % files.count
 
       @logger.info "Scaling videos to #{TARGET_VIDEO_WIDTH}x#{TARGET_VIDEO_HEIGHT}"
+      debug_info = {
+        total_count: files.count,
+        date: stream_date
+      }
+      count = 1
       files.each do |file|
-        scaled_file = scale_video(file, file + '_scaled')
+        debug_info[:current_file] = count
+        scaled_file = scale_video(file, file + '_scaled', debug_info)
         File.unlink file
         scaled_files.push(scaled_file) if scaled_file
+        count += 1
       end
 
       @logger.info "Concatenating %i scaled video(s)" % scaled_files.count
@@ -113,16 +122,21 @@ class GiphyStream
     end
   end
 
-  def scale_video(source, dest)
+  def scale_video(source, dest, debug_info)
     w = TARGET_VIDEO_WIDTH
     h = TARGET_VIDEO_HEIGHT
 
     dest += '.mp4'
-
-    # force to target width dimensions but keep aspect ratio (adding black bars)
+    debug_text = "Loop %i/%i   %s" % [
+      debug_info[:current_file],
+      debug_info[:total_count],
+      debug_info[:date].strftime("%Y-%m-%d %H\\:%M\\:%S") ]
+    
+    # force to target width dimensions but keep aspect ratio (adding black bars) + display debug text
     filter = "scale=iw*min(#{w}/iw\\,#{h}/ih):ih*min(#{w}/iw\\,#{h}/ih)," +
       "pad=#{w}:#{h}:(#{w}-iw*min(#{w}/iw\\,#{h}/ih))/2:(#{h}-ih*min(#{w}/iw\\,#{h}/ih))/2," +
-      "setsar=1:1"
+      "setsar=1:1," +
+      "drawtext=text=\'#{debug_text}\': x=w-tw: y=h-lh: fontcolor=white: box=1: boxcolor=0x00000000@1: fontsize=12"
 
     cmd = apply_cpu_limit([ @ffmpeg_path, '-y',
       '-i', source,
@@ -231,26 +245,24 @@ class GiphyStream
 
       res = query_api('gifs/trending', request_counter * BATCH_SIZE)
       data = JSON.load(res)["data"]
-
+      loop_url_counter = 0
+      
       data.each do |item|
         begin
           url = item["images"]["looping"]["mp4"].strip
-          urls.push(url) if url.length > 0
+          if url.length > 0
+            urls.push(url)
+            loop_url_counter += 1
+          end
         rescue
           next
         end
         break if urls.length >= @count
       end
 
-      # one dot per request
-      if $stdout.isatty
-        print '.'
-        STDOUT.flush
-      end
-
       request_counter += 1
+      @logger.info "Found %i loop URL(s) in this response" % [ loop_url_counter ]
     end
-    puts if $stdout.isatty # print new line
 
     @logger.info "Retrieved %i loop URL(s) in %i requests" % [ urls.count, request_counter ]
     urls
@@ -268,6 +280,8 @@ class GiphyStream
       offset: offset,
       limit: limit,
     })
+
+    @logger.debug "API request: %s" % uri
 
     retries = 0
     begin
