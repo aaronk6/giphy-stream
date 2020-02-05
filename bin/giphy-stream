@@ -44,6 +44,10 @@ opt_parser = OptionParser.new do |opts|
     options[:temp_dir] = f
   end
 
+  opts.on('-l', '--log-file [LOG_FILE]', 'Path to log file (optional, will log to STDOUT if not specified)') do |l|
+    options[:log_file] = l
+  end
+
   opts.on('-h', '--help', 'Show this help screen') do
     puts opt_parser
     exit 0

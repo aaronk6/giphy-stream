@@ -4,6 +4,7 @@ require 'shellwords'
 require 'securerandom'
 require 'json'
 require 'open-uri'
+require 'logger'
 
 class GiphyStream
 
@@ -28,6 +29,15 @@ class GiphyStream
 
     @api_key = options[:api_key] ? options[:api_key] : DEFAULT_API_KEY
 
+    if options[:log_file]
+      @logger = Logger.new(File.open(options[:log_file], 'a'), 'weekly')
+    else
+      @logger = Logger.new(STDOUT)
+      @logger.formatter = proc do |severity, datetime, progname, msg|
+        "#{msg}\n"
+     end
+    end
+
     @output_path = options[:output_path] ? File.expand_path(options[:output_path])
       : File.join(Dir.pwd, DEFAULT_FILE_NAME)
 
@@ -49,7 +59,7 @@ class GiphyStream
     loop_urls = get_loop_urls
     exit 1 unless create_stream(loop_urls, options[:temp_dir])
 
-    puts "Done."
+    @logger.info "Done."
   end
 
   private
@@ -63,7 +73,7 @@ class GiphyStream
       dir = Dir.mktmpdir
     end
 
-    puts "Temporary directory is %s" % dir
+    @logger.info "Temporary directory is %s" % dir
 
     files = []
     scaled_files = []
@@ -76,23 +86,23 @@ class GiphyStream
       end
 
       if files.count == 0
-        $stderr.puts "No videos downloaded"
+        @logger.fatal "No videos downloaded"
         return false
       end
 
-      puts "Downloaded %i file(s)" % files.count
+      @logger.info "Downloaded %i file(s)" % files.count
 
-      puts "Scaling videos to #{TARGET_VIDEO_WIDTH}x#{TARGET_VIDEO_HEIGHT}"
+      @logger.info "Scaling videos to #{TARGET_VIDEO_WIDTH}x#{TARGET_VIDEO_HEIGHT}"
       files.each do |file|
         scaled_file = scale_video(file, file + '_scaled')
         File.unlink file
         scaled_files.push(scaled_file) if scaled_file
       end
 
-      puts "Concatenating %i scaled video(s)" % scaled_files.count
+      @logger.info "Concatenating %i scaled video(s)" % scaled_files.count
       return false unless concatenate_videos(scaled_files, @output_path, stream_path)
 
-      puts "Writing .htaccess"
+      @logger.info "Writing .htaccess"
       return false unless write_htaccess(@output_path, stream_path)
 
       return true
@@ -125,7 +135,7 @@ class GiphyStream
     `#{cmd}`
 
     if $?.to_i != 0
-      $stderr.puts "Failed to convert video %s to %s" % [ source, dest ]
+      @logger.fatal "Failed to convert video %s to %s" % [ source, dest ]
       return nil
     end
 
@@ -139,7 +149,7 @@ class GiphyStream
     base_dir = File.join(dest, File.dirname(stream_path))
     stream_name = File.basename(stream_path)
 
-    puts "Writing stream to %s" % File.join(dest, stream_path)
+    @logger.info "Writing stream to %s" % File.join(dest, stream_path)
 
     begin
 
@@ -165,7 +175,7 @@ class GiphyStream
       `#{cmd}`
 
       if $?.to_i != 0
-        $stderr.puts "Failed to concatenate videos"
+        @logger.fatal "Failed to concatenate videos"
         return false
       end
 
@@ -193,7 +203,7 @@ class GiphyStream
   def download_file(url, dir)
 
     path = File.join(dir, SecureRandom.hex)
-    puts "Downloading %s to %s" % [ url, path ]
+    @logger.info "Downloading %s to %s" % [ url, path ]
 
     File.open(path, 'wb') do |f|
       begin
@@ -201,7 +211,7 @@ class GiphyStream
           f.write(data.read)
         end
       rescue => e
-        puts "Failed to download file from %s, skipping (%s)" % [ url, e ]
+        @logger.warn "Failed to download file from %s, skipping (%s)" % [ url, e ]
         return
       end
     end
@@ -210,7 +220,7 @@ class GiphyStream
   end
 
   def get_loop_urls
-    puts "Getting loop URLs"
+    @logger.info "Getting loop URLs"
 
     urls = []
     request_counter = 0
@@ -231,14 +241,16 @@ class GiphyStream
       end
 
       # one dot per request
-      print '.'
-      STDOUT.flush
+      if $stdout.isatty
+        print '.'
+        STDOUT.flush
+      end
 
       request_counter += 1
     end
-    puts # print new line
+    puts if $stdout.isatty # print new line
 
-    puts "Retrieved %i loop URL(s) in %i requests" % [ urls.count, request_counter ]
+    @logger.info "Retrieved %i loop URL(s) in %i requests" % [ urls.count, request_counter ]
     urls
   end
 
@@ -260,7 +272,7 @@ class GiphyStream
       return open(uri).read
     rescue => e
       if (retries += 1) <= MAX_RETRIES
-        puts "Failed to connect to Giphy API (#{e}), retrying in #{retries} second(s)..."
+        @logger.warn "Failed to connect to Giphy API (#{e}), retrying in #{retries} second(s)..."
         sleep(retries)
         retry
       else
