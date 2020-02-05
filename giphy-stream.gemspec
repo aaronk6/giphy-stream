@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = 'giphy-stream'
-  s.version     = '0.2.1'
+  s.version     = '0.2.2'
   s.date        = '2020-02-05'
   s.summary     = "Creates an HLS stream from Giphy Trending"
   s.authors     = ["aaronk6"]
