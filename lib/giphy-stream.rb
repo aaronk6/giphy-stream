@@ -221,15 +221,11 @@ class GiphyStream
     path = File.join(dir, SecureRandom.hex)
     @logger.info "Downloading %s to %s" % [ url, path ]
 
-    File.open(path, 'wb') do |f|
-      begin
-        open(url, 'rb') do |data|
-          f.write(data.read)
-        end
-      rescue => e
-        @logger.warn "Failed to download file from %s, skipping (%s)" % [ url, e ]
-        return
-      end
+    begin
+      IO.copy_stream(URI.open(url), path)
+    rescue => e
+      @logger.warn "Failed to download file from %s, skipping (%s)" % [ url, e ]
+      return
     end
 
     path
@@ -285,7 +281,7 @@ class GiphyStream
 
     retries = 0
     begin
-      return open(uri).read
+      return uri.read
     rescue => e
       if (retries += 1) <= MAX_RETRIES
         @logger.warn "Failed to connect to Giphy API (#{e}), retrying in #{retries} second(s)..."

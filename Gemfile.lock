@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    giphy-stream (0.2.2)
+    giphy-stream (0.2.3)
 
 GEM
   specs:
@@ -13,4 +13,4 @@ DEPENDENCIES
   giphy-stream!
 
 BUNDLED WITH
-   1.17.2
+   2.3.4
