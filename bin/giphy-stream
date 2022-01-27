@@ -24,6 +24,14 @@ opt_parser = OptionParser.new do |opts|
     options[:api_key] = a
   end
 
+  opts.on('-w', '--use-web-api-key', 'Scrape web API key from giphy.com, required to receive tags') do |w|
+    options[:use_web_api_key] = w
+  end
+
+  opts.on('-x', '--exclude-tags [TAGS]', 'Exclude videos that have one of these tags (comma-separated list), requires API key that receives tags') do |x|
+    options[:exclude_tags] = x.split(",").map(&:strip)
+  end
+
   opts.on('-f', '--ffmpeg-path [FFMPEG_PATH]', 'Path to ffmpeg binary (optional, default: ffmpeg)') do |f|
     options[:ffmpeg_path] = f
   end

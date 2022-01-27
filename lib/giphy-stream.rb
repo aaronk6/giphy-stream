@@ -18,6 +18,7 @@ class GiphyStream
   HLS_STREAM_NAME = 'giphy.m3u8'
   TEMP_DIRECTORY_PREFIX = 'giphy-stream_'
   ENDPOINT = 'https://api.giphy.com/v1'
+  WEB_ENDPOINT = 'https://www.giphy.com/' # to retrieve web API key
   BATCH_SIZE = 100 # 100 is Giphy's maximum per request
   MAX_REQUESTS = 10 # maximum number of requests to perform before giving up
   MAX_RETRIES = 100
@@ -27,7 +28,12 @@ class GiphyStream
 
   def initialize(options)
 
-    @api_key = options[:api_key] ? options[:api_key] : DEFAULT_API_KEY
+    if options[:use_web_api_key]
+      @api_key = get_web_api_key
+    else
+      @api_key = options[:api_key] ? options[:api_key] : DEFAULT_API_KEY
+    end
+    exit 1 unless @api_key
 
     if options[:log_file]
       log_file = File.open(options[:log_file], 'a')
@@ -51,6 +57,8 @@ class GiphyStream
       $stderr.puts "Count must be between 1 and 100"
       exit 1
     end
+
+    @exclude_tags = options[:exclude_tags] || []
 
     @cpulimit_path = options[:cpulimit_path] ? options[:cpulimit_path] : DEFAULT_CPULIMIT_PATH
     @ffmpeg_path = options[:ffmpeg_path] ? options[:ffmpeg_path] : DEFAULT_FFMPEG_PATH
@@ -245,6 +253,12 @@ class GiphyStream
       
       data.each do |item|
         begin
+          matching_tags = item["tags"] & @exclude_tags
+          unless matching_tags.empty?
+            @logger.info "Skipping %s because the following excluded tag(s): %s" % [
+              item["url"], matching_tags.join(", ") ]
+            next
+          end
           url = item["images"]["looping"]["mp4"].strip
           if url.length > 0
             urls.push(url)
@@ -266,6 +280,15 @@ class GiphyStream
 
   def temp_video_name(path)
     File.join(File.dirname(path), '.tmp_%s' % File.basename(path))
+  end
+
+  def get_web_api_key()
+    begin
+      html = URI.open(WEB_ENDPOINT) {|f| f.read }
+      return html.match(/GIPHY_FE_WEB_API_KEY\s*=\s*("|')(?<key>\w+)("|')/).named_captures['key']
+    rescue => e
+      @logger.fatal "Failed to retrieve web API key (%s)" % e
+    end
   end
 
   def query_api(route, offset=0, limit=BATCH_SIZE)
