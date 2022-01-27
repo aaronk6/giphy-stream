@@ -54,7 +54,7 @@ class GiphyStream
     elsif options[:count].nil?
       @count = DEFAULT_VIDEO_COUNT
     else
-      $stderr.puts "Count must be between 1 and 100"
+      $stderr.puts "Count must be between 1 and 1000"
       exit 1
     end
 
