@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    giphy-stream (0.2.3)
+    giphy-stream (0.3.0)
 
 GEM
   specs:
